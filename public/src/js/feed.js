@@ -20,6 +20,14 @@ function openCreatePostModal() {
 
     deferredPrompt = null;
   }
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .getRegistrations()
+      .then(function (registrations) {
+        registrations.forEach(registration => registration.unregister())
+      });
+  }
 }
 
 function closeCreatePostModal() {
@@ -29,6 +37,25 @@ function closeCreatePostModal() {
 shareImageButton.addEventListener('click', openCreatePostModal);
 
 closeCreatePostModalButton.addEventListener('click', closeCreatePostModal);
+
+// function onSaveButtonClicked(event) {
+//   console.log("click");
+
+//   if ('caches' in window) {
+//     caches
+//       .open("user-requested")
+//       .then(function (cache) {
+//         cache.add('https://httpbin.org/get');
+//         cache.add('/src/images/sf-boat.jpg');
+//       })
+//   }
+// }
+
+function clearCards() {
+  while (sharedMomentsArea.hasChildNodes()) {
+    sharedMomentsArea.removeChild(sharedMomentsArea.lastChild)
+  }
+}
 
 function createCard() {
   var cardWrapper = document.createElement('div');
@@ -48,15 +75,51 @@ function createCard() {
   cardSupportingText.className = 'mdl-card__supporting-text';
   cardSupportingText.textContent = 'In San Francisco';
   cardSupportingText.style.textAlign = 'center';
+  // var cardSaveButton = document.createElement('button');
+  // cardSaveButton.textContent = "Save";
+  // cardSaveButton.addEventListener('click', onSaveButtonClicked)
+  // cardSupportingText.appendChild(cardSaveButton);
   cardWrapper.appendChild(cardSupportingText);
   componentHandler.upgradeElement(cardWrapper);
   sharedMomentsArea.appendChild(cardWrapper);
 }
 
-fetch('https://httpbin.org/get')
+var url = 'https://httpbin.org/post';
+var networkDataReceived = false;
+
+fetch(url, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Accept": "application/json"
+  },
+  body: JSON.stringify({
+    message: "Some message"
+  })
+})
   .then(function (res) {
     return res.json();
   })
   .then(function (data) {
+    networkDataReceived = true;
+    console.log("From web", data);
+    clearCards();
     createCard();
   });
+
+if ('caches' in window) {
+  caches
+    .match(url)
+    .then(function (cache) {
+      if (cache) {
+        return cache.json();
+      }
+    })
+    .then(function (data) {
+      if (!networkDataReceived) {
+        console.log("From cache", data);
+        clearCards();
+        createCard();
+      }
+    });
+}
